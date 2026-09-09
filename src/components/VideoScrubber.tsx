@@ -16,8 +16,8 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
   onBufferProgress,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [isVideoReady, setIsVideoReady] = useState<boolean>(false);
-  const [duration, setDuration] = useState<number>(0);
+  // Default duration to 60.00 so scrubbing works immediately without waiting for metadata
+  const [duration, setDuration] = useState<number>(60.00);
 
   // Adaptive detection: Mobile Portrait (9:16, 20.2MB) vs Desktop Widescreen (16:9, 56.4MB)
   const isMobile = useIsMobile();
@@ -37,33 +37,31 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
 
     if (video.buffered.length > 0 && video.duration > 0) {
       const bufferedEnd = video.buffered.end(video.buffered.length - 1);
-      // On mobile require only 4s buffer for instant launch, on desktop 7s
-      const targetInitialBuffer = isMobile ? 4 : 7;
+      const targetInitialBuffer = isMobile ? 3 : 6;
       const pct = Math.min(100, Math.round((bufferedEnd / targetInitialBuffer) * 100));
       onBufferProgress(pct);
-
-      if (pct >= 60) {
-        setIsVideoReady(true);
-      }
     }
   }, [onBufferProgress, isMobile]);
 
-  // Load video metadata and ensure video is permanently paused for scrubbing
+  // Ensure video is properly primed and loaded for mobile WebKit & desktop
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('webkit-playsinline', 'true');
+
     const handleLoadedMetadata = () => {
-      if (video.duration && !isNaN(video.duration)) {
-        video.pause();
+      if (video.duration && !isNaN(video.duration) && video.duration > 0) {
         setDuration(video.duration);
         if (onDurationLoaded) onDurationLoaded(video.duration);
       }
     };
 
     const handleCanPlay = () => {
-      video.pause();
-      setIsVideoReady(true);
       if (onBufferProgress) onBufferProgress(100);
     };
 
@@ -71,24 +69,41 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
     video.addEventListener('canplay', handleCanPlay);
     video.addEventListener('progress', handleProgress);
 
-    if (video.readyState >= 2 && video.duration) {
-      video.pause();
-      setDuration(video.duration);
-      setIsVideoReady(true);
-      if (onDurationLoaded) onDurationLoaded(video.duration);
-      if (onBufferProgress) onBufferProgress(100);
-    }
+    // Explicitly load the video stream
+    video.load();
+
+    // iOS WebKit Decoder Priming:
+    // On iOS Safari, a paused video will not paint currentTime seeks unless unlocked by user gesture
+    const unlockPlayback = () => {
+      if (video && video.paused) {
+        video.muted = true;
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              video.pause();
+            })
+            .catch(() => {});
+        }
+      }
+    };
+
+    window.addEventListener('touchstart', unlockPlayback, { once: true, passive: true });
+    window.addEventListener('scroll', unlockPlayback, { once: true, passive: true });
+    window.addEventListener('click', unlockPlayback, { once: true, passive: true });
 
     return () => {
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('canplay', handleCanPlay);
       video.removeEventListener('progress', handleProgress);
+      window.removeEventListener('touchstart', unlockPlayback);
+      window.removeEventListener('scroll', unlockPlayback);
+      window.removeEventListener('click', unlockPlayback);
     };
   }, [resolvedSrc, onDurationLoaded, onBufferProgress, handleProgress]);
 
   // Map scroll progress (0.0 to 0.92) to video duration
   useEffect(() => {
-    if (!duration || duration <= 0) return;
     const journeyLimit = 0.92;
     const normalizedProgress = Math.max(0, Math.min(1, scrollProgress / journeyLimit));
     targetTimeRef.current = normalizedProgress * (duration - 0.05);
@@ -99,31 +114,34 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
     const video = videoRef.current;
     if (!video) return;
 
-    // 0.14 factor ensures smooth ease-out with zero bounce-back
-    const lerpFactor = 0.14;
+    // 0.16 smoothing factor for immediate responsive scrub on mobile & desktop
+    const lerpFactor = 0.16;
 
     const renderLoop = () => {
-      if (duration > 0) {
-        const target = targetTimeRef.current;
-        const current = currentTimeRef.current;
-        const diff = target - current;
+      const target = targetTimeRef.current;
+      const current = currentTimeRef.current;
+      const diff = target - current;
 
-        if (Math.abs(diff) > 0.001) {
-          currentTimeRef.current = current + diff * lerpFactor;
+      if (Math.abs(diff) > 0.001) {
+        currentTimeRef.current = current + diff * lerpFactor;
+      } else {
+        currentTimeRef.current = target;
+      }
+
+      const clampedTime = Math.max(0, Math.min(duration - 0.05, currentTimeRef.current));
+
+      // Seek video when delta occurs
+      if (Math.abs(clampedTime - lastAppliedTimeRef.current) > 0.003) {
+        // Use fastSeek on supported mobile browsers, fallback to currentTime
+        if (typeof (video as any).fastSeek === 'function') {
+          (video as any).fastSeek(clampedTime);
         } else {
-          currentTimeRef.current = target;
-        }
-
-        const clampedTime = Math.max(0, Math.min(duration - 0.05, currentTimeRef.current));
-
-        // Update hardware video playback only when meaningful delta occurs
-        if (Math.abs(clampedTime - lastAppliedTimeRef.current) > 0.005) {
           video.currentTime = clampedTime;
-          lastAppliedTimeRef.current = clampedTime;
+        }
+        lastAppliedTimeRef.current = clampedTime;
 
-          if (onTimeUpdate) {
-            onTimeUpdate(clampedTime, clampedTime / duration);
-          }
+        if (onTimeUpdate) {
+          onTimeUpdate(clampedTime, clampedTime / duration);
         }
       }
 
@@ -143,18 +161,7 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
     <div
       className="fixed inset-0 w-full h-full z-0 overflow-hidden bg-[#0a0a0b] pointer-events-none select-none"
     >
-      {/* 1. Instant High-Res Poster Backdrop (Mobile 9:16 vs Desktop 16:9) - 0ms instant display */}
-      <img
-        src={resolvedPoster}
-        alt="Restaurant Frische Grube Historic Exterior"
-        className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-700 ease-out ${
-          isVideoReady ? 'opacity-0' : 'opacity-100'
-        }`}
-        loading="eager"
-        decoding="async"
-      />
-
-      {/* 2. GPU Hardware Accelerated Video Plane */}
+      {/* GPU Hardware Accelerated Video Plane - Always visible with native poster */}
       <div className="relative w-full h-full flex items-center justify-center">
         <video
           ref={videoRef}
@@ -163,9 +170,7 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
           preload="auto"
           muted
           playsInline
-          className={`w-full h-full object-cover object-center shadow-[0_40px_100px_rgba(0,0,0,0.92)] will-change-transform transition-opacity duration-700 ease-out ${
-            isVideoReady ? 'opacity-100' : 'opacity-0'
-          }`}
+          className="w-full h-full object-cover object-center shadow-[0_40px_100px_rgba(0,0,0,0.92)] will-change-transform"
           style={{
             imageRendering: '-webkit-optimize-contrast',
             transform: 'translateZ(0)',

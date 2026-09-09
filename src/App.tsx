@@ -78,58 +78,71 @@ export default function App() {
         onBufferProgress={(pct) => setLoadProgress((p) => Math.max(p, pct))}
       />
 
-      {/* 3. Top-Right Navigation & Active Stage HUD */}
-      <nav aria-label="Hauptnavigation" className="fixed top-4 right-4 sm:top-6 sm:right-6 md:top-8 md:right-10 z-30 flex items-center gap-2 sm:gap-3 md:gap-4">
-        {/* Language Switcher: DE / EN */}
-        <div className="flex items-center border border-subtle bg-[#111113]/90 backdrop-blur-md rounded-sm p-0.5 pointer-events-auto">
-          <button
-            type="button"
-            onClick={() => setLang('de')}
-            className={`font-sans text-[10px] md:text-[11px] uppercase tracking-[0.1em] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-[2px] transition-all cursor-pointer ${
-              lang === 'de'
-                ? 'bg-[#f5c97a] text-[#0a0a0b] font-semibold shadow-sm'
-                : 'text-parchment/60 hover:text-parchment'
-            }`}
-            title="Auf Deutsch wechseln"
-          >
-            DE
-          </button>
-          <button
-            type="button"
-            onClick={() => setLang('en')}
-            className={`font-sans text-[10px] md:text-[11px] uppercase tracking-[0.1em] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-[2px] transition-all cursor-pointer ${
-              lang === 'en'
-                ? 'bg-[#f5c97a] text-[#0a0a0b] font-semibold shadow-sm'
-                : 'text-parchment/60 hover:text-parchment'
-            }`}
-            title="Switch to English"
-          >
-            EN
-          </button>
+      {/* 3. Responsive Top Header Bar (Full width, zero collision between brand and nav) */}
+      <header className="fixed top-0 left-0 right-0 z-30 px-4 py-3 sm:px-8 sm:py-6 flex items-center justify-between pointer-events-none select-none">
+        {/* Brand Monogram: visible on mobile, blends into desktop */}
+        <div className="flex items-center gap-2 pointer-events-auto">
+          <div className="w-8 h-8 rounded-full border border-[#f5c97a]/30 flex items-center justify-center bg-[#111113]/85 backdrop-blur-md">
+            <span className="font-serif italic font-semibold text-xs text-[#f5c97a]">FG</span>
+          </div>
+          <span className="md:hidden font-serif text-sm tracking-wide text-parchment font-medium drop-shadow-sm">
+            Frische Grube
+          </span>
         </div>
 
-        <a
-          href="#menu"
-          className="font-sans text-[11px] sm:text-xs uppercase tracking-[0.12em] text-parchment/80 hover:text-parchment transition-colors pointer-events-auto px-2.5 py-1 border border-subtle/70 hover:border-subtle bg-[#111113]/70 backdrop-blur-md rounded-sm"
-        >
-          {lang === 'de' ? 'Menue' : 'Menu'}
-        </a>
-        <a
-          href="#contact"
-          className="hidden sm:inline-block font-sans text-xs uppercase tracking-[0.14em] text-parchment/60 hover:text-parchment transition-colors pointer-events-auto px-2.5 py-1.5 border border-transparent hover:border-subtle"
-        >
-          {lang === 'de' ? 'Kontakt' : 'Contact'}
-        </a>
-        <span className="hidden md:inline-block w-[1px] h-3 bg-subtle" />
-        <span className="hidden md:inline-block font-sans text-[11px] uppercase tracking-[0.12em] text-[#f5c97a]">
-          {isPastJourney
-            ? (lang === 'de' ? 'Abendkarte' : 'Evening Menu')
-            : activeBeat[lang]?.badgeLabel || (lang === 'de' ? 'Scheuerstraße' : 'Historic Vaults')}
-        </span>
-      </nav>
+        {/* Right Navigation Controls */}
+        <nav aria-label="Hauptnavigation" className="flex items-center gap-2 sm:gap-3 md:gap-4 pointer-events-auto">
+          {/* Language Switcher: DE / EN */}
+          <div className="flex items-center border border-subtle bg-[#111113]/90 backdrop-blur-md rounded-sm p-0.5">
+            <button
+              type="button"
+              onClick={() => setLang('de')}
+              className={`font-sans text-[10px] md:text-[11px] uppercase tracking-[0.1em] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-[2px] transition-all cursor-pointer ${
+                lang === 'de'
+                  ? 'bg-[#f5c97a] text-[#0a0a0b] font-semibold shadow-sm'
+                  : 'text-parchment/60 hover:text-parchment'
+              }`}
+              title="Auf Deutsch wechseln"
+            >
+              DE
+            </button>
+            <button
+              type="button"
+              onClick={() => setLang('en')}
+              className={`font-sans text-[10px] md:text-[11px] uppercase tracking-[0.1em] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-[2px] transition-all cursor-pointer ${
+                lang === 'en'
+                  ? 'bg-[#f5c97a] text-[#0a0a0b] font-semibold shadow-sm'
+                  : 'text-parchment/60 hover:text-parchment'
+              }`}
+              title="Switch to English"
+            >
+              EN
+            </button>
+          </div>
+
+          <a
+            href="#menu"
+            className="font-sans text-[11px] sm:text-xs uppercase tracking-[0.12em] text-parchment/80 hover:text-parchment transition-colors px-2.5 py-1 border border-subtle/70 hover:border-subtle bg-[#111113]/70 backdrop-blur-md rounded-sm"
+          >
+            {lang === 'de' ? 'Menue' : 'Menu'}
+          </a>
+          <a
+            href="#contact"
+            className="hidden sm:inline-block font-sans text-xs uppercase tracking-[0.14em] text-parchment/60 hover:text-parchment transition-colors px-2.5 py-1.5 border border-transparent hover:border-subtle"
+          >
+            {lang === 'de' ? 'Kontakt' : 'Contact'}
+          </a>
+          <span className="hidden md:inline-block w-[1px] h-3 bg-subtle" />
+          <span className="hidden md:inline-block font-sans text-[11px] uppercase tracking-[0.12em] text-[#f5c97a]">
+            {isPastJourney
+              ? (lang === 'de' ? 'Abendkarte' : 'Evening Menu')
+              : activeBeat[lang]?.badgeLabel || (lang === 'de' ? 'Scheuerstraße' : 'Historic Vaults')}
+          </span>
+        </nav>
+      </header>
 
       {/* 4. Narrative HTML Overlays */}
-      <OverlayExterior scrollProgress={scrollProgress} />
+      <OverlayExterior scrollProgress={scrollProgress} lang={lang} />
       <OverlayWelcome scrollProgress={scrollProgress} lang={lang} />
       <OverlayDishCaption
         currentBeat={activeBeat}
