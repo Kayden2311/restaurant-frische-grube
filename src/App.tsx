@@ -2,7 +2,7 @@ import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
-import { VideoScrubber } from './components/VideoScrubber';
+import { CanvasScrubber } from './components/CanvasScrubber';
 import { LoadingScreen } from './components/LoadingScreen';
 import { OverlayExterior } from './components/OverlayExterior';
 import { OverlayWelcome } from './components/OverlayWelcome';
@@ -84,8 +84,8 @@ export default function App() {
       {/* 1. Luxury Loading Screen */}
       <LoadingScreen progress={loadProgress} />
 
-      {/* 2. Adaptive Hardware-Accelerated 1080p Crisp Video Stage */}
-      <VideoScrubber
+      {/* 2. Apple-Style 60FPS WebP Canvas Scrubber Stage */}
+      <CanvasScrubber
         scrollProgress={scrollProgress}
         onBufferProgress={handleBufferProgress}
       />
