@@ -8,7 +8,7 @@ export const OverlayFooter: React.FC<OverlayFooterProps> = ({ lang = 'de' }) => 
   return (
     <footer
       id="contact"
-      className="relative z-10 w-full bg-[#0a0a0b] py-24 px-6 md:px-12 flex justify-center border-t border-[rgba(244,241,236,0.12)]"
+      className="relative z-10 w-full bg-[#0a0a0b] py-16 px-5 sm:py-24 sm:px-12 flex justify-center border-t border-[rgba(244,241,236,0.12)]"
     >
       <div className="w-full max-w-[640px] text-center">
         {/* Philosophie Label & Pullquote */}
@@ -61,7 +61,7 @@ export const OverlayFooter: React.FC<OverlayFooterProps> = ({ lang = 'de' }) => 
             href="https://wa.me/4938412440126"
             target="_blank"
             rel="noopener noreferrer"
-            className="cta-button inline-flex items-center gap-3 px-8 py-3.5 border-[1.5px] border-[#25D366] text-[#25D366] font-sans text-[15px] font-semibold tracking-[0.02em] hover:bg-[#25D366] hover:text-[#0a0a0b] transition-all duration-300 pointer-events-auto"
+            className="cta-button inline-flex items-center justify-center w-full sm:w-auto gap-3 px-8 py-3.5 border-[1.5px] border-[#25D366] text-[#25D366] font-sans text-[15px] font-semibold tracking-[0.02em] hover:bg-[#25D366] hover:text-[#0a0a0b] transition-all duration-300 pointer-events-auto"
           >
             <svg
               className="w-5 h-5 fill-current"

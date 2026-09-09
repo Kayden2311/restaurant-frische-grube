@@ -19,18 +19,18 @@ export const OverlayExterior: React.FC<OverlayExteriorProps> = ({ scrollProgress
       style={{ opacity }}
     >
       {/* Top Left Title */}
-      <div className="absolute top-8 left-8 md:top-12 md:left-12">
-        <h1 className="font-serif text-[clamp(28px,3.8vw,52px)] font-semibold text-parchment tracking-tight leading-none">
+      <div className="absolute top-5 left-5 sm:top-8 sm:left-8 md:top-12 md:left-12">
+        <h1 className="font-serif text-[clamp(24px,4vw,52px)] font-semibold text-parchment tracking-tight leading-none">
           Frische Grube
         </h1>
-        <p className="font-sans text-xs uppercase tracking-[0.2em] text-muted mt-2">
+        <p className="font-sans text-[10px] sm:text-xs uppercase tracking-[0.2em] text-muted mt-1.5 sm:mt-2">
           Restaurant &bull; Wismar
         </p>
       </div>
 
       {/* Bottom Center Address */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-center">
-        <p className="font-sans text-[13px] md:text-sm font-normal uppercase tracking-[0.14em] text-parchment/70">
+      <div className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 text-center w-full px-4">
+        <p className="font-sans text-[11px] sm:text-sm font-normal uppercase tracking-[0.14em] text-parchment/70">
           Scheuerstrasse 1, Wismar
         </p>
       </div>

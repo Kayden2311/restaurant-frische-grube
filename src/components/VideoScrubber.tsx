@@ -19,8 +19,10 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
   const [isVideoReady, setIsVideoReady] = useState<boolean>(false);
   const [duration, setDuration] = useState<number>(0);
 
-  // Adaptive video source selection: Mobile 720p (18.9MB) vs Desktop 1080p (56.3MB)
-  const resolvedSrc = useMemoVideoSrc(videoSrc);
+  // Adaptive detection: Mobile Portrait (9:16, 20.2MB) vs Desktop Widescreen (16:9, 56.4MB)
+  const isMobile = useIsMobile();
+  const resolvedSrc = videoSrc || (isMobile ? '/videos/restaurant_journey_mobile.mp4' : '/videos/restaurant_journey.mp4');
+  const resolvedPoster = isMobile ? '/frames/frame_00_exterior_mobile.jpg' : '/frames/frame_00_exterior.jpg';
 
   // Monotonic 1st-order lerp state (strictly non-overshooting, zero recoil)
   const targetTimeRef = useRef<number>(0);
@@ -28,23 +30,23 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
   const lastAppliedTimeRef = useRef<number>(-1);
   const animFrameIdRef = useRef<number | null>(null);
 
-  // Track video buffer progress for responsive loading feedback
+  // Responsive buffer tracking
   const handleProgress = useCallback(() => {
     const video = videoRef.current;
     if (!video || !onBufferProgress) return;
 
     if (video.buffered.length > 0 && video.duration > 0) {
       const bufferedEnd = video.buffered.end(video.buffered.length - 1);
-      // Require initial 6-8 seconds buffered for butter-smooth scrubbing release
-      const targetInitialBuffer = Math.min(8, video.duration);
+      // On mobile require only 4s buffer for instant launch, on desktop 7s
+      const targetInitialBuffer = isMobile ? 4 : 7;
       const pct = Math.min(100, Math.round((bufferedEnd / targetInitialBuffer) * 100));
       onBufferProgress(pct);
 
-      if (pct >= 80) {
+      if (pct >= 60) {
         setIsVideoReady(true);
       }
     }
-  }, [onBufferProgress]);
+  }, [onBufferProgress, isMobile]);
 
   // Load video metadata and ensure video is permanently paused for scrubbing
   useEffect(() => {
@@ -84,7 +86,7 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
     };
   }, [resolvedSrc, onDurationLoaded, onBufferProgress, handleProgress]);
 
-  // Map scroll progress (0.0 to 0.92) to video duration (60.00s)
+  // Map scroll progress (0.0 to 0.92) to video duration
   useEffect(() => {
     if (!duration || duration <= 0) return;
     const journeyLimit = 0.92;
@@ -93,12 +95,11 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
   }, [scrollProgress, duration]);
 
   // Monotonic 1st-Order Exponential Lerp Loop
-  // Pure directional smoothing without spring overshoot - completely eliminates recoil
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Exponential smoothing factor (0.14 ensures smooth ease-out with zero bounce-back)
+    // 0.14 factor ensures smooth ease-out with zero bounce-back
     const lerpFactor = 0.14;
 
     const renderLoop = () => {
@@ -108,8 +109,6 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
         const diff = target - current;
 
         if (Math.abs(diff) > 0.001) {
-          // Strictly monotonic: diff is positive when scrolling down, negative when scrolling up
-          // Zero overshoot, zero recoil, zero oscillation
           currentTimeRef.current = current + diff * lerpFactor;
         } else {
           currentTimeRef.current = target;
@@ -144,9 +143,9 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
     <div
       className="fixed inset-0 w-full h-full z-0 overflow-hidden bg-[#0a0a0b] pointer-events-none select-none"
     >
-      {/* 1. Instant High-Res Poster Backdrop - Pre-renders at 0ms, zero black flash */}
+      {/* 1. Instant High-Res Poster Backdrop (Mobile 9:16 vs Desktop 16:9) - 0ms instant display */}
       <img
-        src="/frames/frame_00_exterior.jpg"
+        src={resolvedPoster}
         alt="Restaurant Frische Grube Historic Exterior"
         className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-700 ease-out ${
           isVideoReady ? 'opacity-0' : 'opacity-100'
@@ -155,12 +154,12 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
         decoding="async"
       />
 
-      {/* 2. GPU Hardware Accelerated 1080p Crisp Video Plane */}
+      {/* 2. GPU Hardware Accelerated Video Plane */}
       <div className="relative w-full h-full flex items-center justify-center">
         <video
           ref={videoRef}
           src={resolvedSrc}
-          poster="/frames/frame_00_exterior.jpg"
+          poster={resolvedPoster}
           preload="auto"
           muted
           playsInline
@@ -191,24 +190,22 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
   );
 };
 
-// Helper to determine mobile vs desktop optimized video URL
-function useMemoVideoSrc(customSrc?: string): string {
-  const [src, setSrc] = useState<string>(() => {
-    if (customSrc) return customSrc;
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      return '/videos/restaurant_journey_720p.mp4';
+// Hook to detect mobile screens (< 768px)
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
     }
-    return '/videos/restaurant_journey.mp4';
+    return false;
   });
 
   useEffect(() => {
-    if (customSrc) {
-      setSrc(customSrc);
-      return;
-    }
-    const isMobile = window.innerWidth < 768;
-    setSrc(isMobile ? '/videos/restaurant_journey_720p.mp4' : '/videos/restaurant_journey.mp4');
-  }, [customSrc]);
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
-  return src;
+  return isMobile;
 }

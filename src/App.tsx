@@ -79,13 +79,13 @@ export default function App() {
       />
 
       {/* 3. Top-Right Navigation & Active Stage HUD */}
-      <nav aria-label="Hauptnavigation" className="fixed top-6 right-6 md:top-8 md:right-10 z-30 flex items-center gap-3 md:gap-4">
+      <nav aria-label="Hauptnavigation" className="fixed top-4 right-4 sm:top-6 sm:right-6 md:top-8 md:right-10 z-30 flex items-center gap-2 sm:gap-3 md:gap-4">
         {/* Language Switcher: DE / EN */}
-        <div className="flex items-center border border-subtle bg-[#111113]/85 backdrop-blur-md rounded-sm p-0.5 pointer-events-auto">
+        <div className="flex items-center border border-subtle bg-[#111113]/90 backdrop-blur-md rounded-sm p-0.5 pointer-events-auto">
           <button
             type="button"
             onClick={() => setLang('de')}
-            className={`font-sans text-[10px] md:text-[11px] uppercase tracking-[0.1em] px-2.5 py-1 rounded-[2px] transition-all cursor-pointer ${
+            className={`font-sans text-[10px] md:text-[11px] uppercase tracking-[0.1em] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-[2px] transition-all cursor-pointer ${
               lang === 'de'
                 ? 'bg-[#f5c97a] text-[#0a0a0b] font-semibold shadow-sm'
                 : 'text-parchment/60 hover:text-parchment'
@@ -97,7 +97,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => setLang('en')}
-            className={`font-sans text-[10px] md:text-[11px] uppercase tracking-[0.1em] px-2.5 py-1 rounded-[2px] transition-all cursor-pointer ${
+            className={`font-sans text-[10px] md:text-[11px] uppercase tracking-[0.1em] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-[2px] transition-all cursor-pointer ${
               lang === 'en'
                 ? 'bg-[#f5c97a] text-[#0a0a0b] font-semibold shadow-sm'
                 : 'text-parchment/60 hover:text-parchment'
@@ -110,18 +110,18 @@ export default function App() {
 
         <a
           href="#menu"
-          className="font-sans text-xs uppercase tracking-[0.14em] text-parchment/60 hover:text-parchment transition-colors pointer-events-auto px-2.5 py-1.5 border border-transparent hover:border-subtle"
+          className="font-sans text-[11px] sm:text-xs uppercase tracking-[0.12em] text-parchment/80 hover:text-parchment transition-colors pointer-events-auto px-2.5 py-1 border border-subtle/70 hover:border-subtle bg-[#111113]/70 backdrop-blur-md rounded-sm"
         >
           {lang === 'de' ? 'Menue' : 'Menu'}
         </a>
         <a
           href="#contact"
-          className="font-sans text-xs uppercase tracking-[0.14em] text-parchment/60 hover:text-parchment transition-colors pointer-events-auto px-2.5 py-1.5 border border-transparent hover:border-subtle"
+          className="hidden sm:inline-block font-sans text-xs uppercase tracking-[0.14em] text-parchment/60 hover:text-parchment transition-colors pointer-events-auto px-2.5 py-1.5 border border-transparent hover:border-subtle"
         >
           {lang === 'de' ? 'Kontakt' : 'Contact'}
         </a>
-        <span className="hidden sm:inline-block w-[1px] h-3 bg-subtle" />
-        <span className="font-sans text-[11px] uppercase tracking-[0.12em] text-[#f5c97a]">
+        <span className="hidden md:inline-block w-[1px] h-3 bg-subtle" />
+        <span className="hidden md:inline-block font-sans text-[11px] uppercase tracking-[0.12em] text-[#f5c97a]">
           {isPastJourney
             ? (lang === 'de' ? 'Abendkarte' : 'Evening Menu')
             : activeBeat[lang]?.badgeLabel || (lang === 'de' ? 'Scheuerstraße' : 'Historic Vaults')}

@@ -8,7 +8,7 @@ export const OverlayMenu: React.FC<OverlayMenuProps> = ({ lang = 'de' }) => {
   return (
     <section
       id="menu"
-      className="relative z-10 w-full min-h-screen bg-[#0a0a0b]/92 backdrop-blur-[12px] py-24 px-6 md:px-12 flex justify-center border-t border-[rgba(244,241,236,0.12)]"
+      className="relative z-10 w-full min-h-screen bg-[#0a0a0b]/92 backdrop-blur-[12px] py-16 px-4 sm:py-24 sm:px-12 flex justify-center border-t border-[rgba(244,241,236,0.12)]"
     >
       <div className="w-full max-w-[680px]">
         {/* Headline */}
