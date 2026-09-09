@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
@@ -13,6 +13,7 @@ import { OverlayFooter } from './components/OverlayFooter';
 import { VIDEO_BEATS, VideoBeat } from './data/videoJourneyBeats';
 
 gsap.registerPlugin(ScrollTrigger);
+ScrollTrigger.config({ ignoreMobileResize: true });
 
 export default function App() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -33,6 +34,11 @@ export default function App() {
       clearTimeout(timer2);
       clearTimeout(timer3);
     };
+  }, []);
+
+  // Stable buffer progress handler
+  const handleBufferProgress = useCallback((pct: number) => {
+    setLoadProgress((p) => Math.max(p, pct));
   }, []);
 
   // GSAP ScrollTrigger setup for smooth 60FPS video scrubbing (600vh track)
@@ -81,7 +87,7 @@ export default function App() {
       {/* 2. Adaptive Hardware-Accelerated 1080p Crisp Video Stage */}
       <VideoScrubber
         scrollProgress={scrollProgress}
-        onBufferProgress={(pct) => setLoadProgress((p) => Math.max(p, pct))}
+        onBufferProgress={handleBufferProgress}
       />
 
       {/* 3. Responsive Top Header Bar (Full width, zero collision between brand and nav) */}

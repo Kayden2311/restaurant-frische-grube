@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface VideoScrubberProps {
   scrollProgress: number;
@@ -18,6 +18,17 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   // Default duration to 60.00 seconds so calculations work immediately
   const [duration, setDuration] = useState<number>(60.00);
+  const durationRef = useRef<number>(60.00);
+
+  // Keep callback references stable to prevent re-triggering effects on scroll
+  const onDurationLoadedRef = useRef(onDurationLoaded);
+  onDurationLoadedRef.current = onDurationLoaded;
+
+  const onBufferProgressRef = useRef(onBufferProgress);
+  onBufferProgressRef.current = onBufferProgress;
+
+  const onTimeUpdateRef = useRef(onTimeUpdate);
+  onTimeUpdateRef.current = onTimeUpdate;
 
   // Adaptive video source selection: Mobile Portrait (9:16) vs Desktop Widescreen (16:9)
   const isMobile = useIsMobile();
@@ -30,20 +41,8 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
   const lastSeekTimestampRef = useRef<number>(0);
   const animFrameIdRef = useRef<number | null>(null);
 
-  // Buffer progress tracking
-  const handleProgress = useCallback(() => {
-    const video = videoRef.current;
-    if (!video || !onBufferProgress) return;
-
-    if (video.buffered.length > 0 && video.duration > 0) {
-      const bufferedEnd = video.buffered.end(video.buffered.length - 1);
-      const targetInitialBuffer = isMobile ? 3 : 5;
-      const pct = Math.min(100, Math.round((bufferedEnd / targetInitialBuffer) * 100));
-      onBufferProgress(pct);
-    }
-  }, [onBufferProgress, isMobile]);
-
   // Video initialization and mobile decoder priming
+  // Depends ONLY on resolvedSrc so video.load() is NEVER called during scroll
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -56,20 +55,35 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
 
     const handleLoadedMetadata = () => {
       if (video.duration && !isNaN(video.duration) && video.duration > 0) {
+        durationRef.current = video.duration;
         setDuration(video.duration);
-        if (onDurationLoaded) onDurationLoaded(video.duration);
+        if (onDurationLoadedRef.current) {
+          onDurationLoadedRef.current(video.duration);
+        }
       }
     };
 
     const handleCanPlay = () => {
-      if (onBufferProgress) onBufferProgress(100);
+      if (onBufferProgressRef.current) {
+        onBufferProgressRef.current(100);
+      }
+    };
+
+    const handleProgress = () => {
+      if (!onBufferProgressRef.current) return;
+      if (video.buffered.length > 0 && video.duration > 0) {
+        const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+        const targetInitialBuffer = isMobile ? 3 : 5;
+        const pct = Math.min(100, Math.round((bufferedEnd / targetInitialBuffer) * 100));
+        onBufferProgressRef.current(pct);
+      }
     };
 
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('canplay', handleCanPlay);
     video.addEventListener('progress', handleProgress);
 
-    // Explicitly load video
+    // Initial load
     video.load();
 
     // Auto-prime video decoder: Play muted then immediately pause to unfreeze WebKit decoder pipeline
@@ -101,7 +115,7 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
       window.removeEventListener('scroll', unlockDecoder);
       window.removeEventListener('click', unlockDecoder);
     };
-  }, [resolvedSrc, onDurationLoaded, onBufferProgress, handleProgress]);
+  }, [resolvedSrc, isMobile]);
 
   // Map scroll progress (0.0 to 0.92) to video duration
   useEffect(() => {
@@ -110,8 +124,8 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
     targetTimeRef.current = normalizedProgress * (duration - 0.05);
   }, [scrollProgress, duration]);
 
-  // Smooth Render Loop with Non-Blocking Time Throttling
-  // Avoids asynchronous DOM event locks that freeze scrolling on mobile and desktop
+  // Continuous Smooth Render Loop with 30ms decoder throttle and readyState check
+  // Runs uninterrupted throughout the component lifecycle
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -119,6 +133,7 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
     const lerpFactor = 0.16;
 
     const renderLoop = () => {
+      const currentDuration = durationRef.current;
       const target = targetTimeRef.current;
       const current = currentTimeRef.current;
       const diff = target - current;
@@ -129,19 +144,21 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
         currentTimeRef.current = target;
       }
 
-      const clampedTime = Math.max(0, Math.min(duration - 0.05, currentTimeRef.current));
+      const clampedTime = Math.max(0, Math.min(currentDuration - 0.05, currentTimeRef.current));
 
       // Throttle seek requests to at most once every 30ms (~33 seeks/sec)
-      // This gives hardware decoders sufficient time to complete without backlog
+      // and ensure video is ready to seek (readyState >= 1)
       const now = performance.now();
       if (now - lastSeekTimestampRef.current > 30) {
         if (Math.abs(clampedTime - lastAppliedTimeRef.current) > 0.005) {
-          video.currentTime = clampedTime;
-          lastAppliedTimeRef.current = clampedTime;
-          lastSeekTimestampRef.current = now;
+          if (video.readyState >= 1) {
+            video.currentTime = clampedTime;
+            lastAppliedTimeRef.current = clampedTime;
+            lastSeekTimestampRef.current = now;
 
-          if (onTimeUpdate) {
-            onTimeUpdate(clampedTime, clampedTime / duration);
+            if (onTimeUpdateRef.current) {
+              onTimeUpdateRef.current(clampedTime, clampedTime / currentDuration);
+            }
           }
         }
       }
@@ -156,7 +173,7 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
         cancelAnimationFrame(animFrameIdRef.current);
       }
     };
-  }, [duration, onTimeUpdate]);
+  }, []);
 
   return (
     <div
