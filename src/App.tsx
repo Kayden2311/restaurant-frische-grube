@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
@@ -19,8 +19,21 @@ export default function App() {
   const scrollTrackRef = useRef<HTMLDivElement | null>(null);
 
   const [scrollProgress, setScrollProgress] = useState<number>(0);
-  const [loadProgress] = useState<number>(100);
+  const [loadProgress, setLoadProgress] = useState<number>(20);
   const [lang, setLang] = useState<'de' | 'en'>('de');
+
+  // Progressive loading with graceful 2.2s fallback limit for instant responsiveness
+  useEffect(() => {
+    const timer1 = setTimeout(() => setLoadProgress((p) => Math.max(p, 65)), 600);
+    const timer2 = setTimeout(() => setLoadProgress((p) => Math.max(p, 90)), 1400);
+    const timer3 = setTimeout(() => setLoadProgress(100), 2200);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    };
+  }, []);
 
   // GSAP ScrollTrigger setup for smooth 60FPS video scrubbing (600vh track)
   useGSAP(
@@ -59,10 +72,10 @@ export default function App() {
       {/* 1. Luxury Loading Screen */}
       <LoadingScreen progress={loadProgress} />
 
-      {/* 2. 60FPS Hardware Accelerated Video Stage (All-Intra GOP=1) */}
+      {/* 2. Adaptive Hardware-Accelerated 1080p Crisp Video Stage */}
       <VideoScrubber
         scrollProgress={scrollProgress}
-        videoSrc="/videos/restaurant_journey.mp4"
+        onBufferProgress={(pct) => setLoadProgress((p) => Math.max(p, pct))}
       />
 
       {/* 3. Top-Right Navigation & Active Stage HUD */}
