@@ -50,7 +50,13 @@ export default function App() {
         },
       });
 
+      // Refresh on next frame to ensure track height is registered on mobile
+      const refreshId = requestAnimationFrame(() => {
+        ScrollTrigger.refresh();
+      });
+
       return () => {
+        cancelAnimationFrame(refreshId);
         trigger.kill();
       };
     },
@@ -68,7 +74,7 @@ export default function App() {
   const isPastJourney = scrollProgress >= 0.92;
 
   return (
-    <main ref={containerRef} className="relative w-full bg-[#0a0a0b] text-[#f4f1ec] min-h-screen overflow-x-hidden">
+    <main ref={containerRef} className="relative w-full bg-[#0a0a0b] text-[#f4f1ec] min-h-screen">
       {/* 1. Luxury Loading Screen */}
       <LoadingScreen progress={loadProgress} />
 

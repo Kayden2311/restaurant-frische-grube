@@ -16,10 +16,10 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
   onBufferProgress,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  // Default duration to 60.00 so calculations run immediately
+  // Default duration to 60.00 seconds so calculations work immediately
   const [duration, setDuration] = useState<number>(60.00);
 
-  // Adaptive video source: Mobile Portrait (9:16, 20.2MB) vs Desktop Widescreen (16:9, 56.4MB)
+  // Adaptive video source selection: Mobile Portrait (9:16) vs Desktop Widescreen (16:9)
   const isMobile = useIsMobile();
   const resolvedSrc = videoSrc || (isMobile ? '/videos/restaurant_journey_mobile.mp4' : '/videos/restaurant_journey.mp4');
 
@@ -27,10 +27,8 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
   const targetTimeRef = useRef<number>(0);
   const currentTimeRef = useRef<number>(0);
   const lastAppliedTimeRef = useRef<number>(-1);
+  const lastSeekTimestampRef = useRef<number>(0);
   const animFrameIdRef = useRef<number | null>(null);
-
-  // Hardware seek lock: prevents seek spamming that causes flashing on desktop and freezes on mobile
-  const isSeekingRef = useRef<boolean>(false);
 
   // Buffer progress tracking
   const handleProgress = useCallback(() => {
@@ -45,7 +43,7 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
     }
   }, [onBufferProgress, isMobile]);
 
-  // Setup video and mobile decoder priming
+  // Video initialization and mobile decoder priming
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -67,49 +65,41 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
       if (onBufferProgress) onBufferProgress(100);
     };
 
-    const handleSeeking = () => {
-      isSeekingRef.current = true;
-    };
-
-    const handleSeeked = () => {
-      isSeekingRef.current = false;
-    };
-
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('canplay', handleCanPlay);
     video.addEventListener('progress', handleProgress);
-    video.addEventListener('seeking', handleSeeking);
-    video.addEventListener('seeked', handleSeeked);
 
     // Explicitly load video
     video.load();
 
-    // Unlock WebKit hardware decoder pipeline on first gesture
-    const primeDecoder = () => {
-      if (video && video.paused) {
+    // Auto-prime video decoder: Play muted then immediately pause to unfreeze WebKit decoder pipeline
+    const primePromise = video.play();
+    if (primePromise !== undefined) {
+      primePromise.then(() => video.pause()).catch(() => {});
+    }
+
+    // Gesture fallback unlock for mobile browsers with strict autoplay policies
+    const unlockDecoder = () => {
+      if (video) {
         video.muted = true;
         const p = video.play();
         if (p !== undefined) {
-          p.then(() => {
-            video.pause();
-          }).catch(() => {});
+          p.then(() => video.pause()).catch(() => {});
         }
       }
     };
 
-    window.addEventListener('touchstart', primeDecoder, { once: true, passive: true });
-    window.addEventListener('scroll', primeDecoder, { once: true, passive: true });
-    window.addEventListener('click', primeDecoder, { once: true, passive: true });
+    window.addEventListener('touchstart', unlockDecoder, { once: true, passive: true });
+    window.addEventListener('scroll', unlockDecoder, { once: true, passive: true });
+    window.addEventListener('click', unlockDecoder, { once: true, passive: true });
 
     return () => {
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('canplay', handleCanPlay);
       video.removeEventListener('progress', handleProgress);
-      video.removeEventListener('seeking', handleSeeking);
-      video.removeEventListener('seeked', handleSeeked);
-      window.removeEventListener('touchstart', primeDecoder);
-      window.removeEventListener('scroll', primeDecoder);
-      window.removeEventListener('click', primeDecoder);
+      window.removeEventListener('touchstart', unlockDecoder);
+      window.removeEventListener('scroll', unlockDecoder);
+      window.removeEventListener('click', unlockDecoder);
     };
   }, [resolvedSrc, onDurationLoaded, onBufferProgress, handleProgress]);
 
@@ -120,7 +110,8 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
     targetTimeRef.current = normalizedProgress * (duration - 0.05);
   }, [scrollProgress, duration]);
 
-  // Smooth Render Loop with Hardware Seek Throttling
+  // Smooth Render Loop with Non-Blocking Time Throttling
+  // Avoids asynchronous DOM event locks that freeze scrolling on mobile and desktop
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -140,12 +131,14 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
 
       const clampedTime = Math.max(0, Math.min(duration - 0.05, currentTimeRef.current));
 
-      // Apply seek ONLY when decoder is ready and not busy seeking
-      // This prevents seek cancellations that cause flashing on desktop and freeze on mobile
-      if (!isSeekingRef.current && !video.seeking) {
-        if (Math.abs(clampedTime - lastAppliedTimeRef.current) > 0.015) {
+      // Throttle seek requests to at most once every 30ms (~33 seeks/sec)
+      // This gives hardware decoders sufficient time to complete without backlog
+      const now = performance.now();
+      if (now - lastSeekTimestampRef.current > 30) {
+        if (Math.abs(clampedTime - lastAppliedTimeRef.current) > 0.005) {
           video.currentTime = clampedTime;
           lastAppliedTimeRef.current = clampedTime;
+          lastSeekTimestampRef.current = now;
 
           if (onTimeUpdate) {
             onTimeUpdate(clampedTime, clampedTime / duration);
@@ -169,7 +162,7 @@ export const VideoScrubber: React.FC<VideoScrubberProps> = ({
     <div
       className="fixed inset-0 w-full h-full z-0 overflow-hidden bg-[#0a0a0b] pointer-events-none select-none"
     >
-      {/* GPU Hardware Accelerated Video Plane - NO separate flashing poster elements */}
+      {/* GPU Hardware Accelerated Video Plane - NO poster attribute to eliminate flashes */}
       <div className="relative w-full h-full flex items-center justify-center">
         <video
           ref={videoRef}
