@@ -79,16 +79,16 @@ export default function App() {
       />
 
       {/* 3. Responsive Top Header Bar (Full width, zero collision between brand and nav) */}
-      <header className="fixed top-0 left-0 right-0 z-30 px-4 py-3 sm:px-8 sm:py-6 flex items-center justify-between pointer-events-none select-none">
-        {/* Brand Monogram: visible on mobile, blends into desktop */}
-        <div className="flex items-center gap-2 pointer-events-auto">
-          <div className="w-8 h-8 rounded-full border border-[#f5c97a]/30 flex items-center justify-center bg-[#111113]/85 backdrop-blur-md">
+      <header className="fixed top-0 left-0 right-0 z-30 px-4 py-3 sm:px-8 sm:py-5 flex items-center justify-between pointer-events-none select-none">
+        {/* Brand Monogram */}
+        <a href="#" className="flex items-center gap-2.5 pointer-events-auto group">
+          <div className="w-8 h-8 rounded-full border border-[#f5c97a]/30 group-hover:border-[#f5c97a]/70 flex items-center justify-center bg-[#111113]/85 backdrop-blur-md transition-colors">
             <span className="font-serif italic font-semibold text-xs text-[#f5c97a]">FG</span>
           </div>
-          <span className="md:hidden font-serif text-sm tracking-wide text-parchment font-medium drop-shadow-sm">
+          <span className="hidden sm:inline-block font-serif text-sm tracking-wide text-parchment/90 font-medium">
             Frische Grube
           </span>
-        </div>
+        </a>
 
         {/* Right Navigation Controls */}
         <nav aria-label="Hauptnavigation" className="flex items-center gap-2 sm:gap-3 md:gap-4 pointer-events-auto">
